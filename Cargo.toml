@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 tokio = { version = "0.2", features = ["full"] }
-warp = "0.2"
+warp = "0.2.5"
 prometheus = "0.10.0"
 lazy_static = "1.4.0"
+quick-error = "2.0.0"
