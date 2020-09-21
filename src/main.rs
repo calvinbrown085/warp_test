@@ -6,6 +6,8 @@ use warp::Filter;
 use routes::*;
 use tokio::time;
 use std::time::Duration;
+use log::info;
+use log4rs;
 
 mod database;
 mod error;
@@ -14,6 +16,9 @@ mod routes;
 
 #[tokio::main]
 async fn main() {
+    log4rs::init_file("src/config/log4rs.yaml", Default::default()).unwrap();
+
+    info!("booting up!");
 
     let routes = ping().or(person().or(db_query()));
 
