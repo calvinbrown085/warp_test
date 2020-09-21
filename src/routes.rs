@@ -1,13 +1,17 @@
 
-use prometheus::{Counter, HistogramVec, TextEncoder, Encoder};
+use prometheus::{CounterVec, HistogramVec, TextEncoder, Encoder};
+use serde::{Deserialize, Serialize};
 use warp::Filter;
+use warp::reply::Json;
+use crate::database::{DoSomethingWithDatabase, DatabaseQuery};
+
 
 lazy_static! {
-    static ref ROUTE_COUNTER: Counter = register_counter!(opts!(
+    static ref ROUTE_COUNTER: CounterVec = register_counter_vec!(
         "example_http_requests_total",
         "Total number of HTTP requests made.",
-        labels! {"handler" => "all",}
-    )).unwrap();
+        &["count_name", "status"]
+    ).unwrap();
     static ref ROUTE_TIMER: HistogramVec = register_histogram_vec!(
         "example_http_request_duration_seconds",
         "The HTTP request latencies in seconds.",
@@ -16,6 +20,7 @@ lazy_static! {
     .unwrap();
 }
 
+#[derive(Deserialize, Serialize)]
 struct Person {
     name: String,
     age: u32,
@@ -29,18 +34,30 @@ pub fn ping() -> impl Filter<Extract = (String,), Error = warp::Rejection> + Cop
             format!("pong")
         });
     _timer.observe_duration();
-    ROUTE_COUNTER.inc();
+    ROUTE_COUNTER.with_label_values(&["ping", "2xx"]).inc();
     resp
 
 }
 
-pub fn person() -> impl Filter<Extract = (String,), Error = warp::Rejection> + Copy {
+pub fn db_query() -> impl Filter<Extract = (Json,), Error = warp::Rejection> + Copy {
+    let timer = ROUTE_TIMER.with_label_values(&["database_query"]).start_timer();
+    let resp = warp::get()
+        .and(warp::path!("database-query" / u32))
+        .map(|id: u32| {
+            let db_query: DatabaseQuery = DatabaseQuery { id };
+            warp::reply::json(&db_query.select_data().unwrap())
+        });
+    timer.observe_duration();
+    resp
+}
+
+pub fn person() -> impl Filter<Extract = (Json,), Error = warp::Rejection> + Copy {
     let timer = ROUTE_TIMER.with_label_values(&["person"]).start_timer();
     let resp = warp::get()
         .and(warp::path!("person" / u32))
         .map(|age: u32| {
             let person = Person { name: String::from("Calvin"), age: age};
-            format!("Person name: {}, age: {}", person.name, person.age)
+            warp::reply::json(&person)
         });
     timer.observe_duration();
     resp

@@ -1,5 +1,6 @@
 
-use prometheus::Counter;
+use serde::Serialize;
+use warp::reject;
 
 quick_error! {
     #[derive(Debug)]
@@ -9,9 +10,7 @@ quick_error! {
     }
 }
 
-fn handle_error(error: HttpError) -> String {
-    match error {
-        HttpError::ClientError => String::from("test"),
-        HttpError::ServerError => String::from("test")
-    }
-}
+#[derive(Debug)]
+pub struct ServerError;
+
+impl reject::Reject for ServerError {}
